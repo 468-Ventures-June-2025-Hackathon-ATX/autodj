@@ -292,10 +292,12 @@ def setup():
     required_keys = [
         ("OPENAI_API_KEY", "OpenAI API key for track analysis"),
         ("PERPLEXITY_API_KEY", "Perplexity API key for artist discovery"),
-        ("BEATPORT_API_KEY", "Beatport API key (optional - will use web scraping)")
+        ("BEATPORT_API_KEY", "Beatport API key (optional - will use web scraping)"),
+        ("BEATPORT_EMAIL", "Beatport account email (for audio automation)"),
+        ("BEATPORT_PASSWORD", "Beatport account password (for audio automation)")
     ]
     
-    setup_table = Table(title="🔑 API Key Status")
+    setup_table = Table(title="🔑 Configuration Status")
     setup_table.add_column("Service", style="cyan")
     setup_table.add_column("Status", style="green")
     setup_table.add_column("Required", style="yellow")
@@ -303,7 +305,14 @@ def setup():
     for key, description in required_keys:
         value = os.getenv(key)
         status = "✅ Configured" if value else "❌ Missing"
-        required = "Yes" if key != "BEATPORT_API_KEY" else "Optional"
+        
+        if key in ["OPENAI_API_KEY", "PERPLEXITY_API_KEY"]:
+            required = "Yes"
+        elif key in ["BEATPORT_EMAIL", "BEATPORT_PASSWORD"]:
+            required = "Audio Only"
+        else:
+            required = "Optional"
+            
         setup_table.add_row(key, status, required)
     
     console.print(setup_table)
@@ -314,13 +323,12 @@ def setup():
 @cli.command()
 @click.option('--count', '-c', default=25, help='Number of tracks to download')
 @click.option('--playlist-name', '-n', help='Custom playlist name')
-@click.option('--beatport-email', help='Beatport account email')
-@click.option('--beatport-password', help='Beatport account password')
 @click.option('--headless/--no-headless', default=True, help='Run browser in headless mode')
-def download(count, playlist_name, beatport_email, beatport_password, headless):
+def download(count, playlist_name, headless):
     """🎵 Full automation: Discover, download, and prepare tracks for Pioneer XDJ-RX3"""
     
     from src.audio.automation import AudioAutomation
+    from config.settings import BEATPORT_EMAIL, BEATPORT_PASSWORD
     
     console.print(Panel.fit(
         "[bold green]AutoDJ - Full Audio Automation[/bold green]\n"
@@ -354,17 +362,18 @@ def download(count, playlist_name, beatport_email, beatport_password, headless):
         console.print("[red]❌ ChromeDriver not found. Install ChromeDriver and add to PATH[/red]")
         return
     
-    # Get Beatport credentials if not provided
+    # Get Beatport credentials from environment
     beatport_credentials = None
-    if beatport_email and beatport_password:
+    if BEATPORT_EMAIL and BEATPORT_PASSWORD:
         beatport_credentials = {
-            'email': beatport_email,
-            'password': beatport_password,
+            'email': BEATPORT_EMAIL,
+            'password': BEATPORT_PASSWORD,
             'headless': headless
         }
-        console.print("[green]✅ Beatport credentials provided[/green]")
+        console.print("[green]✅ Beatport credentials loaded from .env file[/green]")
     else:
-        console.print("[yellow]⚠️  No Beatport credentials - will only use free sources[/yellow]")
+        console.print("[yellow]⚠️  No Beatport credentials in .env - will only use free sources[/yellow]")
+        console.print("[blue]💡 Add BEATPORT_EMAIL and BEATPORT_PASSWORD to .env for full automation[/blue]")
     
     try:
         # First discover tracks (reuse existing logic)

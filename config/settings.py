@@ -11,6 +11,10 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 PERPLEXITY_API_KEY = os.getenv('PERPLEXITY_API_KEY')
 BEATPORT_API_KEY = os.getenv('BEATPORT_API_KEY')
 
+# Beatport Account Credentials (for automated downloading)
+BEATPORT_EMAIL = os.getenv('BEATPORT_EMAIL')
+BEATPORT_PASSWORD = os.getenv('BEATPORT_PASSWORD')
+
 # Reddit API
 REDDIT_CLIENT_ID = os.getenv('REDDIT_CLIENT_ID')
 REDDIT_CLIENT_SECRET = os.getenv('REDDIT_CLIENT_SECRET')

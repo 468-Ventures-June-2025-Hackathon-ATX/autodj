@@ -6,6 +6,7 @@ lxml>=4.9.0
 
 # Audio processing
 mutagen>=1.47.0
+ffmpeg-python>=0.2.0
 
 # Data handling
 pandas>=2.1.0

@@ -66,6 +66,9 @@ TARGET_SAMPLE_RATE = 44100  # Hz
 # Export Settings
 REKORDBOX_XML_PATH = 'data/rekordbox_export.xml'
 USB_EXPORT_PATH = 'data/usb_export'
+DATA_DIR = 'data'
+USB_EXPORT_DIR = os.path.join(DATA_DIR, "usb_export")
+REKORDBOX_XML_PATH = os.path.join(USB_EXPORT_DIR, "PIONEER", "rekordbox", "rekordbox.xml")
 
 # Search Settings
 MAX_TRACKS_PER_SEARCH = 50

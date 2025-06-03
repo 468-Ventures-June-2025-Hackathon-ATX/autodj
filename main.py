@@ -311,5 +311,195 @@ def setup():
     console.print(f"\n[blue]📝 Edit {env_file} file to add your API keys[/blue]")
     console.print(f"[blue]📖 See {env_file}.example for the required format[/blue]")
 
+@cli.command()
+@click.option('--count', '-c', default=25, help='Number of tracks to download')
+@click.option('--playlist-name', '-n', help='Custom playlist name')
+@click.option('--beatport-email', help='Beatport account email')
+@click.option('--beatport-password', help='Beatport account password')
+@click.option('--headless/--no-headless', default=True, help='Run browser in headless mode')
+def download(count, playlist_name, beatport_email, beatport_password, headless):
+    """🎵 Full automation: Discover, download, and prepare tracks for Pioneer XDJ-RX3"""
+    
+    from src.audio.automation import AudioAutomation
+    
+    console.print(Panel.fit(
+        "[bold green]AutoDJ - Full Audio Automation[/bold green]\n"
+        f"Target: {count} tracks with audio files\n"
+        "Pipeline: Discover → Download → Process → USB Export",
+        title="🚀 Starting Full Automation"
+    ))
+    
+    # Initialize automation
+    automation = AudioAutomation()
+    
+    # Test dependencies
+    console.print("\n🔧 [yellow]Testing dependencies...[/yellow]")
+    deps = automation.test_dependencies()
+    
+    deps_table = Table(title="🛠️ Dependencies")
+    deps_table.add_column("Tool", style="cyan")
+    deps_table.add_column("Status", style="green")
+    
+    for tool, available in deps.items():
+        status = "✅ Available" if available else "❌ Missing"
+        deps_table.add_row(tool, status)
+    
+    console.print(deps_table)
+    
+    if not deps['selenium']:
+        console.print("[red]❌ Selenium not available. Install with: pip install selenium[/red]")
+        return
+    
+    if not deps['chrome_driver']:
+        console.print("[red]❌ ChromeDriver not found. Install ChromeDriver and add to PATH[/red]")
+        return
+    
+    # Get Beatport credentials if not provided
+    beatport_credentials = None
+    if beatport_email and beatport_password:
+        beatport_credentials = {
+            'email': beatport_email,
+            'password': beatport_password,
+            'headless': headless
+        }
+        console.print("[green]✅ Beatport credentials provided[/green]")
+    else:
+        console.print("[yellow]⚠️  No Beatport credentials - will only use free sources[/yellow]")
+    
+    try:
+        # First discover tracks (reuse existing logic)
+        autodj = AutoDJ()
+        console.print("\n🔍 [yellow]Phase 1: Discovering tracks...[/yellow]")
+        tracks = autodj.discover_tracks(count)
+        
+        if not tracks:
+            console.print("[red]❌ No tracks discovered[/red]")
+            return
+        
+        console.print(f"✅ Discovered {len(tracks)} tracks")
+        
+        # Run full automation pipeline
+        if not playlist_name:
+            playlist_name = f"AutoDJ Full Download - {len(tracks)} Tracks"
+        
+        console.print(f"\n🚀 [yellow]Starting full automation pipeline...[/yellow]")
+        results = automation.process_full_pipeline(tracks, playlist_name, beatport_credentials)
+        
+        # Display results
+        console.print("\n📊 [bold blue]Automation Results[/bold blue]")
+        
+        results_table = Table(title="🎯 Pipeline Results")
+        results_table.add_column("Phase", style="cyan")
+        results_table.add_column("Result", style="green")
+        
+        results_table.add_row("Tracks Discovered", str(results['total_tracks']))
+        results_table.add_row("Tracks Downloaded", str(len([v for v in results['downloaded_tracks'].values() if v])))
+        results_table.add_row("Tracks Processed", str(len([v for v in results['processed_tracks'].values() if v])))
+        results_table.add_row("Final Success Count", str(results['success_count']))
+        
+        if results['usb_export']:
+            results_table.add_row("USB Export", "✅ Success")
+            results_table.add_row("Audio Files", str(results['usb_export']['audio_files']))
+        else:
+            results_table.add_row("USB Export", "❌ Failed")
+        
+        console.print(results_table)
+        
+        # Show errors if any
+        if results['errors']:
+            console.print("\n⚠️ [yellow]Errors encountered:[/yellow]")
+            for error in results['errors']:
+                console.print(f"   - {error}")
+        
+        # Success summary
+        if results['success_count'] > 0:
+            console.print(f"\n🎉 [bold green]Success![/bold green]")
+            console.print(f"✅ {results['success_count']} tracks ready for Pioneer XDJ-RX3")
+            
+            if results['usb_export']:
+                console.print(f"📁 USB Path: [blue]{results['usb_export']['usb_path']}[/blue]")
+                console.print(f"📄 Rekordbox XML: [blue]{results['usb_export']['xml_path']}[/blue]")
+                
+                console.print(Panel(
+                    "1. Copy the USB export folder to your USB drive\n"
+                    "2. Import the rekordbox.xml file into Rekordbox\n"
+                    "3. Sync to your Pioneer XDJ-RX3\n"
+                    "4. Enjoy your AI-curated playlist!",
+                    title="📋 Next Steps",
+                    border_style="green"
+                ))
+        else:
+            console.print("[red]❌ No tracks were successfully processed[/red]")
+            console.print("[yellow]💡 Try checking your Beatport credentials or internet connection[/yellow]")
+    
+    except Exception as e:
+        console.print(f"[red]❌ Automation failed: {e}[/red]")
+
+@cli.command()
+def audio_status():
+    """📊 Show audio automation status and cache statistics"""
+    
+    from src.audio.automation import AudioAutomation
+    
+    automation = AudioAutomation()
+    status = automation.get_pipeline_status()
+    
+    console.print(Panel.fit(
+        "[bold blue]Audio Automation Status[/bold blue]",
+        title="📊 Status"
+    ))
+    
+    # Dependencies
+    deps = automation.test_dependencies()
+    deps_table = Table(title="🛠️ Dependencies")
+    deps_table.add_column("Tool", style="cyan")
+    deps_table.add_column("Status", style="green")
+    
+    for tool, available in deps.items():
+        status_text = "✅ Available" if available else "❌ Missing"
+        deps_table.add_row(tool, status_text)
+    
+    console.print(deps_table)
+    
+    # Cache statistics
+    cache_table = Table(title="💾 Cache Statistics")
+    cache_table.add_column("Location", style="cyan")
+    cache_table.add_column("Files", style="green")
+    cache_table.add_column("Size (MB)", style="yellow")
+    
+    cache_table.add_row(
+        "Download Cache",
+        str(status['cache_stats']['total_files']),
+        str(status['cache_stats']['total_size_mb'])
+    )
+    
+    cache_table.add_row(
+        "USB Export",
+        str(status['usb_stats']['total_files']),
+        str(status['usb_stats']['total_size_mb'])
+    )
+    
+    console.print(cache_table)
+    
+    # Connection status
+    console.print(f"\n🔗 Beatport Connected: {'✅ Yes' if status['beatport_connected'] else '❌ No'}")
+    console.print(f"🎵 FFmpeg Available: {'✅ Yes' if status['ffmpeg_available'] else '❌ No'}")
+
+@cli.command()
+@click.confirmation_option(prompt='Are you sure you want to clear all cached files?')
+def clear_cache():
+    """🗑️  Clear all cached audio files and USB exports"""
+    
+    from src.audio.automation import AudioAutomation
+    
+    automation = AudioAutomation()
+    
+    console.print("[yellow]🗑️  Clearing all cached files...[/yellow]")
+    
+    if automation.clear_all_cache():
+        console.print("[green]✅ Cache cleared successfully[/green]")
+    else:
+        console.print("[red]❌ Failed to clear cache[/red]")
+
 if __name__ == '__main__':
     cli()

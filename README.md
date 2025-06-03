@@ -23,15 +23,24 @@ DJ Disco Lines is known for:
 - **BPM & Key Matching**: Ensures tracks fit the 120-128 BPM sweet spot
 - **Style Scoring**: Rates tracks on disco-funk tech house compatibility
 
+### 🎵 **Full Audio Automation** ⭐ **NEW**
+- **Complete Pipeline**: Discover → Download → Process → USB Export
+- **Beatport Automation**: Automated track purchasing (use at your own risk)
+- **Audio Processing**: FFmpeg integration for format conversion and quality optimization
+- **Metadata Tagging**: Automatic ID3 tag embedding with track information
+- **Multi-source Downloads**: Free/legal sources + commercial automation
+
 ### 🎧 **Pioneer XDJ-RX3 Ready**
 - **Rekordbox XML Export**: Generate playlists compatible with Pioneer equipment
 - **USB Structure**: Creates proper folder structure for XDJ-RX3
+- **Audio Files Included**: Complete tracks ready for immediate DJ use
 - **Metadata Rich**: Includes BPM, key, genre, and cue point information
 
 ### 📊 **Smart Curation**
 - **Duplicate Removal**: Intelligent deduplication across sources
 - **Quality Ranking**: Prioritizes high-compatibility tracks
 - **Database Storage**: Tracks discoveries for future playlist building
+- **Cache Management**: Efficient audio file caching and USB export management
 
 ## 🛠️ Installation
 
@@ -104,6 +113,32 @@ python main.py list-tracks [OPTIONS]
 
 Options:
   -s, --style-score FLOAT   Minimum style match score (default: 0.7)
+```
+
+#### 🎵 **Full Audio Automation** ⭐ **NEW**
+```bash
+# Complete pipeline: Discover → Download → Process → USB Export
+python main.py download [OPTIONS]
+
+Options:
+  -c, --count INTEGER           Number of tracks to download (default: 25)
+  -n, --playlist-name TEXT      Custom playlist name
+  --beatport-email TEXT         Beatport account email (for automation)
+  --beatport-password TEXT      Beatport account password (for automation)
+  --headless/--no-headless      Run browser in headless mode (default: True)
+
+# Examples:
+python main.py download --count 10                    # Free sources only
+python main.py download --beatport-email user@email.com --beatport-password pass
+```
+
+#### 📊 **Audio Status & Management**
+```bash
+# Check audio automation status and dependencies
+python main.py audio-status
+
+# Clear all cached audio files and USB exports
+python main.py clear-cache
 ```
 
 #### ⚙️ **Setup**

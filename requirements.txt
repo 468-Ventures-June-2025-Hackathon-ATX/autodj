@@ -1,0 +1,27 @@
+# Core dependencies
+requests>=2.31.0
+openai>=1.3.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Audio processing
+mutagen>=1.47.0
+
+# Data handling
+pandas>=2.1.0
+
+# Web scraping
+selenium>=4.15.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# CLI interface
+click>=8.1.0
+rich>=13.6.0
+
+# XML processing (for Rekordbox)
+xmltodict>=0.13.0
+
+# Reddit API
+praw>=7.7.0

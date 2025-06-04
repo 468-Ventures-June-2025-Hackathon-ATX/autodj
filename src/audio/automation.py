@@ -39,7 +39,7 @@ class AudioAutomation:
             return False
     
     def process_full_pipeline(self, tracks: List[Dict], playlist_name: str, 
-                            beatport_credentials: Dict = None) -> Dict:
+                            beatport_credentials: Dict = None, include_social_media: bool = True) -> Dict:
         """Run the complete automation pipeline"""
         
         print("🚀 Starting Full Audio Automation Pipeline")
@@ -60,7 +60,7 @@ class AudioAutomation:
             print("\n📥 Phase 1: Downloading Tracks")
             print("-" * 40)
             
-            downloaded_tracks = self._download_phase(tracks, beatport_credentials)
+            downloaded_tracks = self._download_phase(tracks, beatport_credentials, include_social_media)
             pipeline_results['downloaded_tracks'] = downloaded_tracks
             
             # Phase 2: Process audio files
@@ -102,7 +102,7 @@ class AudioAutomation:
             if self.beatport_automation:
                 self.beatport_automation.close()
     
-    def _download_phase(self, tracks: List[Dict], beatport_credentials: Dict = None) -> Dict[str, str]:
+    def _download_phase(self, tracks: List[Dict], beatport_credentials: Dict = None, include_social_media: bool = True) -> Dict[str, str]:
         """Phase 1: Download all tracks"""
         
         downloaded_tracks = {}
@@ -111,7 +111,7 @@ class AudioAutomation:
         
         # 1. Try free/legal sources first
         print("🆓 Attempting free/legal downloads...")
-        free_downloads = self.download_manager.download_playlist(tracks)
+        free_downloads = self.download_manager.download_playlist(tracks, include_social_media=False)  # Don't use social media in first pass
         downloaded_tracks.update(free_downloads)
         
         # 2. Try Beatport automation if credentials provided
@@ -138,6 +138,24 @@ class AudioAutomation:
                             downloaded_tracks[track_name] = download_path
             else:
                 print("❌ Failed to setup Beatport automation")
+        
+        # 3. Try social media as final fallback
+        if include_social_media and any(v is None for v in downloaded_tracks.values()):
+            print("📱 Attempting social media downloads...")
+            
+            # Only try social media for tracks that haven't been downloaded yet
+            tracks_for_social = [
+                track for track in tracks 
+                if downloaded_tracks.get(f"{track.get('artist')} - {track.get('title')}") is None
+            ]
+            
+            if tracks_for_social:
+                social_downloads = self.download_manager.download_from_social_media_only(tracks_for_social)
+                
+                # Update results
+                for track_name, download_path in social_downloads.items():
+                    if download_path:
+                        downloaded_tracks[track_name] = download_path
         
         return downloaded_tracks
     

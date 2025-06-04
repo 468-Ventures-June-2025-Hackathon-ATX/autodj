@@ -324,7 +324,8 @@ def setup():
 @click.option('--count', '-c', default=25, help='Number of tracks to download')
 @click.option('--playlist-name', '-n', help='Custom playlist name')
 @click.option('--headless/--no-headless', default=True, help='Run browser in headless mode')
-def download(count, playlist_name, headless):
+@click.option('--social-media/--no-social-media', default=True, help='Include social media sources (TikTok, SoundCloud)')
+def download(count, playlist_name, headless, social_media):
     """🎵 Full automation: Discover, download, and prepare tracks for Pioneer XDJ-RX3"""
     
     from src.audio.automation import AudioAutomation
@@ -333,6 +334,7 @@ def download(count, playlist_name, headless):
     console.print(Panel.fit(
         "[bold green]AutoDJ - Full Audio Automation[/bold green]\n"
         f"Target: {count} tracks with audio files\n"
+        f"Social Media: {'Enabled' if social_media else 'Disabled'}\n"
         "Pipeline: Discover → Download → Process → USB Export",
         title="🚀 Starting Full Automation"
     ))
@@ -361,6 +363,17 @@ def download(count, playlist_name, headless):
     if not deps['chrome_driver']:
         console.print("[red]❌ ChromeDriver not found. Install ChromeDriver and add to PATH[/red]")
         return
+    
+    if social_media and 'yt-dlp' not in deps:
+        # Check yt-dlp separately
+        try:
+            import subprocess
+            subprocess.run(['yt-dlp', '--version'], capture_output=True, check=True)
+            console.print("[green]✅ yt-dlp available for social media downloads[/green]")
+        except:
+            console.print("[yellow]⚠️  yt-dlp not found. Install with: pip install yt-dlp[/yellow]")
+            console.print("[yellow]   Social media downloads will be disabled[/yellow]")
+            social_media = False
     
     # Get Beatport credentials from environment
     beatport_credentials = None
@@ -392,7 +405,7 @@ def download(count, playlist_name, headless):
             playlist_name = f"AutoDJ Full Download - {len(tracks)} Tracks"
         
         console.print(f"\n🚀 [yellow]Starting full automation pipeline...[/yellow]")
-        results = automation.process_full_pipeline(tracks, playlist_name, beatport_credentials)
+        results = automation.process_full_pipeline(tracks, playlist_name, beatport_credentials, social_media)
         
         # Display results
         console.print("\n📊 [bold blue]Automation Results[/bold blue]")
@@ -443,6 +456,104 @@ def download(count, playlist_name, headless):
     
     except Exception as e:
         console.print(f"[red]❌ Automation failed: {e}[/red]")
+
+@cli.command()
+@click.option('--count', '-c', default=10, help='Number of tracks to download')
+@click.option('--playlist-name', '-n', help='Custom playlist name')
+@click.option('--platforms', '-p', multiple=True, default=['soundcloud', 'tiktok'], help='Social media platforms to search')
+def social_download(count, playlist_name, platforms):
+    """📱 Download tracks exclusively from social media (TikTok, SoundCloud)"""
+    
+    from src.audio.download_manager import AudioDownloadManager
+    
+    console.print(Panel.fit(
+        "[bold blue]AutoDJ - Social Media Download[/bold blue]\n"
+        f"Target: {count} tracks from social media\n"
+        f"Platforms: {', '.join(platforms)}",
+        title="📱 Social Media Download"
+    ))
+    
+    # Check yt-dlp availability
+    try:
+        import subprocess
+        subprocess.run(['yt-dlp', '--version'], capture_output=True, check=True)
+        console.print("[green]✅ yt-dlp available[/green]")
+    except:
+        console.print("[red]❌ yt-dlp not found. Install with: pip install yt-dlp[/red]")
+        return
+    
+    try:
+        # First discover tracks
+        autodj = AutoDJ()
+        console.print("\n🔍 [yellow]Discovering tracks...[/yellow]")
+        tracks = autodj.discover_tracks(count)
+        
+        if not tracks:
+            console.print("[red]❌ No tracks discovered[/red]")
+            return
+        
+        console.print(f"✅ Discovered {len(tracks)} tracks")
+        
+        # Download from social media only
+        download_manager = AudioDownloadManager()
+        console.print(f"\n📱 [yellow]Downloading from social media...[/yellow]")
+        results = download_manager.download_from_social_media_only(tracks, list(platforms))
+        
+        # Display results
+        successful = len([v for v in results.values() if v])
+        console.print(f"\n🎉 [bold green]Social media download complete![/bold green]")
+        console.print(f"✅ Successfully downloaded: {successful}/{len(tracks)} tracks")
+        
+        if successful > 0:
+            # Create playlist if requested
+            if playlist_name:
+                console.print(f"\n📝 [yellow]Creating playlist: {playlist_name}[/yellow]")
+                successful_tracks = [track for track in tracks if results.get(f"{track.get('artist')} - {track.get('title')}")]
+                playlist = autodj.create_playlist(successful_tracks, playlist_name)
+                console.print(f"✅ Playlist created with {len(successful_tracks)} tracks")
+            
+            # Show cache location
+            cache_stats = download_manager.social_downloader.get_cache_stats()
+            console.print(f"\n📁 Downloaded files location: [blue]{cache_stats['cache_dir']}[/blue]")
+            console.print(f"📊 Total files: {cache_stats['total_files']} ({cache_stats['total_size_mb']} MB)")
+        
+    except Exception as e:
+        console.print(f"[red]❌ Social media download failed: {e}[/red]")
+
+@cli.command()
+@click.argument('url')
+@click.option('--artist', '-a', help='Artist name')
+@click.option('--title', '-t', help='Track title')
+def download_url(url, artist, title):
+    """🔗 Download audio from a specific TikTok or SoundCloud URL"""
+    
+    from src.audio.download_manager import AudioDownloadManager
+    
+    if not artist or not title:
+        console.print("[red]❌ Both --artist and --title are required[/red]")
+        return
+    
+    console.print(Panel.fit(
+        f"[bold cyan]Downloading from URL[/bold cyan]\n"
+        f"URL: {url}\n"
+        f"Artist: {artist}\n"
+        f"Title: {title}",
+        title="🔗 Direct URL Download"
+    ))
+    
+    try:
+        download_manager = AudioDownloadManager()
+        filepath = download_manager.download_from_url(url, artist, title)
+        
+        if filepath:
+            console.print(f"\n✅ [bold green]Download successful![/bold green]")
+            console.print(f"📁 File saved: [blue]{filepath}[/blue]")
+        else:
+            console.print(f"\n❌ [red]Download failed[/red]")
+            console.print("[yellow]💡 Make sure the URL is valid and accessible[/yellow]")
+    
+    except Exception as e:
+        console.print(f"[red]❌ Download error: {e}[/red]")
 
 @cli.command()
 def audio_status():

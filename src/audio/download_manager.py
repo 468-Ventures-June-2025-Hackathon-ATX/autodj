@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import hashlib
 from pathlib import Path
 from config.settings import AUDIO_CACHE_DIR, TARGET_BITRATE, TARGET_SAMPLE_RATE
+from src.audio.social_media_downloader import SocialMediaDownloader
 
 class AudioDownloadManager:
     def __init__(self, cache_dir: str = AUDIO_CACHE_DIR):
@@ -17,6 +18,9 @@ class AudioDownloadManager:
         self.session.headers.update({
             'User-Agent': 'AutoDJ/1.0 (Music Discovery Bot)'
         })
+        
+        # Initialize social media downloader
+        self.social_downloader = SocialMediaDownloader(cache_dir)
         
         # Create cache directory
         os.makedirs(cache_dir, exist_ok=True)
@@ -71,8 +75,8 @@ class AudioDownloadManager:
                 os.remove(filepath)
             return None
     
-    def download_playlist(self, tracks: List[Dict]) -> Dict[str, str]:
-        """Download all tracks in a playlist"""
+    def download_playlist(self, tracks: List[Dict], include_social_media: bool = True) -> Dict[str, str]:
+        """Download all tracks in a playlist with fallback to social media"""
         
         results = {}
         successful = 0
@@ -80,21 +84,47 @@ class AudioDownloadManager:
         print(f"🎵 Starting download of {len(tracks)} tracks...")
         
         for i, track in enumerate(tracks, 1):
-            print(f"\n[{i}/{len(tracks)}] Processing: {track.get('artist')} - {track.get('title')}")
+            track_name = f"{track.get('artist')} - {track.get('title')}"
+            print(f"\n[{i}/{len(tracks)}] Processing: {track_name}")
             
+            # Try traditional download first
             filepath = self.download_track(track)
             
+            # If traditional download failed and social media is enabled, try social platforms
+            if not filepath and include_social_media:
+                print(f"   Traditional download failed, trying social media...")
+                filepath = self.social_downloader.search_and_download_track(track)
+            
             if filepath:
-                results[f"{track.get('artist')} - {track.get('title')}"] = filepath
+                results[track_name] = filepath
                 successful += 1
             else:
-                results[f"{track.get('artist')} - {track.get('title')}"] = None
+                results[track_name] = None
             
             # Rate limiting
             time.sleep(1)
         
         print(f"\n🎉 Download complete: {successful}/{len(tracks)} tracks successful")
         return results
+    
+    def download_from_social_media_only(self, tracks: List[Dict], platforms: List[str] = None) -> Dict[str, str]:
+        """Download tracks exclusively from social media platforms"""
+        
+        if not self.social_downloader.has_ytdlp:
+            print("❌ yt-dlp not available for social media downloads")
+            return {}
+        
+        return self.social_downloader.batch_download(tracks, platforms)
+    
+    def download_from_url(self, url: str, artist: str, title: str) -> Optional[str]:
+        """Download audio from a direct TikTok or SoundCloud URL"""
+        
+        return self.social_downloader.download_from_direct_url(url, artist, title)
+    
+    def search_social_media(self, track: Dict, platforms: List[str] = None) -> Optional[str]:
+        """Search and download from social media platforms only"""
+        
+        return self.social_downloader.search_and_download_track(track, platforms)
     
     def _find_download_url(self, track: Dict) -> Optional[str]:
         """Find download URL from track metadata"""

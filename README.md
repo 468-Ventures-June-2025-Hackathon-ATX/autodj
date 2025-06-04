@@ -25,10 +25,11 @@ DJ Disco Lines is known for:
 
 ### 🎵 **Full Audio Automation** ⭐ **NEW**
 - **Complete Pipeline**: Discover → Download → Process → USB Export
+- **Social Media Integration**: TikTok and SoundCloud audio extraction using yt-dlp
 - **Beatport Automation**: Automated track purchasing (use at your own risk)
 - **Audio Processing**: FFmpeg integration for format conversion and quality optimization
 - **Metadata Tagging**: Automatic ID3 tag embedding with track information
-- **Multi-source Downloads**: Free/legal sources + commercial automation
+- **Multi-source Downloads**: Free/legal sources + social media + commercial automation
 
 ### 🎧 **Pioneer XDJ-RX3 Ready**
 - **Rekordbox XML Export**: Generate playlists compatible with Pioneer equipment
@@ -123,13 +124,41 @@ python main.py download [OPTIONS]
 Options:
   -c, --count INTEGER           Number of tracks to download (default: 25)
   -n, --playlist-name TEXT      Custom playlist name
-  --beatport-email TEXT         Beatport account email (for automation)
-  --beatport-password TEXT      Beatport account password (for automation)
+  --social-media/--no-social-media  Include social media sources (default: True)
   --headless/--no-headless      Run browser in headless mode (default: True)
 
 # Examples:
-python main.py download --count 10                    # Free sources only
-python main.py download --beatport-email user@email.com --beatport-password pass
+python main.py download --count 10                    # All sources including social media
+python main.py download --no-social-media             # Traditional sources only
+```
+
+#### 📱 **Social Media Downloads** ⭐ **NEW**
+```bash
+# Download tracks exclusively from social media platforms
+python main.py social-download [OPTIONS]
+
+Options:
+  -c, --count INTEGER           Number of tracks to download (default: 10)
+  -n, --playlist-name TEXT      Custom playlist name
+  -p, --platforms TEXT          Platforms to search (soundcloud, tiktok)
+
+# Examples:
+python main.py social-download --count 15 --platforms soundcloud
+python main.py social-download --platforms tiktok --platforms soundcloud
+```
+
+#### 🔗 **Direct URL Downloads**
+```bash
+# Download audio from a specific TikTok or SoundCloud URL
+python main.py download-url [URL] [OPTIONS]
+
+Options:
+  -a, --artist TEXT             Artist name (required)
+  -t, --title TEXT              Track title (required)
+
+# Examples:
+python main.py download-url "https://soundcloud.com/artist/track" -a "Artist" -t "Track Title"
+python main.py download-url "https://tiktok.com/@user/video/123" -a "Artist" -t "Track Title"
 ```
 
 #### 📊 **Audio Status & Management**
